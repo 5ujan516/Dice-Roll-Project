@@ -1,0 +1,172 @@
+import random
+import tkinter as tk
+from tkinter import messagebox
+import ttkbootstrap as tb
+
+
+class GuessGame:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🎮 Number Guessing Game")
+
+        # Allow resizing and start maximized
+        self.root.state("zoomed")  # Windows
+        # self.root.attributes("-zoomed", True)  # Linux/macOS
+
+        # Apply modern theme
+        style = tb.Style("superhero")
+
+        self.secret_number = None
+        self.count = 0
+        self.max_range = 100
+        self.high_score = None
+
+        # ===== Main Layout Frame =====
+        self.main_frame = tk.Frame(root, bg="#1c1c1c")
+        self.main_frame.pack(fill="both", expand=True)
+
+        # Title
+        self.title_label = tk.Label(self.main_frame, text="🎲 Number Guessing Challenge 🎲",
+                                    font=("Helvetica", 26, "bold"), fg="gold", bg="#1c1c1c")
+        self.title_label.pack(pady=20)
+
+        # Difficulty Selection
+        difficulty_frame = tk.Frame(self.main_frame, bg="#1c1c1c")
+        difficulty_frame.pack(pady=10)
+
+        tk.Label(difficulty_frame, text="Select Difficulty:",
+                 font=("Arial", 14, "bold"), fg="white", bg="#1c1c1c").pack(side=tk.LEFT, padx=5)
+
+        self.difficulty = tb.Combobox(difficulty_frame,
+                                      values=["Easy (1-50)", "Medium (1-100)", "Hard (1-500)"],
+                                      state="readonly", width=18, bootstyle="info")
+        self.difficulty.current(1)
+        self.difficulty.pack(side=tk.LEFT, padx=5)
+
+        start_button = tb.Button(difficulty_frame, text="🚀 Start Game",
+                                 bootstyle="success", command=self.start_game)
+        start_button.pack(side=tk.LEFT, padx=10)
+
+        # Entry
+        self.entry = tb.Entry(self.main_frame, font=("Arial", 18), justify="center",
+                              state="disabled", width=18)
+        self.entry.pack(pady=20)
+
+        # Guess button
+        self.guess_button = tb.Button(self.main_frame, text="🎯 Guess",
+                                      bootstyle="primary", command=self.check_guess,
+                                      state="disabled", width=20)
+        self.guess_button.pack(pady=5)
+
+        # Feedback
+        self.feedback_label = tk.Label(self.main_frame, text="",
+                                       font=("Arial", 18, "bold"), fg="white", bg="#1c1c1c")
+        self.feedback_label.pack(pady=20)
+
+        # Progress bar
+        self.progress = tb.Progressbar(self.main_frame, mode="determinate",
+                                       bootstyle="striped-info")
+        self.progress.pack(fill="x", padx=50, pady=10)
+
+        # Stats
+        stats_frame = tk.Frame(self.main_frame, bg="#1c1c1c")
+        stats_frame.pack(pady=10)
+
+        self.tries_label = tk.Label(stats_frame, text="Tries: 0", font=("Arial", 14),
+                                    fg="white", bg="#1c1c1c")
+        self.tries_label.pack(side=tk.LEFT, padx=20)
+
+        self.high_score_label = tk.Label(stats_frame, text="🏆 Best Score: None",
+                                         font=("Arial", 14, "bold"), fg="gold", bg="#1c1c1c")
+        self.high_score_label.pack(side=tk.LEFT, padx=20)
+
+        # Reset button
+        self.reset_button = tb.Button(self.main_frame, text="🔄 Restart Game",
+                                      bootstyle="warning", state="disabled", width=20,
+                                      command=self.reset_game)
+        self.reset_button.pack(pady=20)
+
+        # Footer / Status Bar
+        self.footer = tk.Label(root, text="© 2025 Number Guessing Game | Built with ❤️ in Python",
+                               font=("Arial", 10), fg="lightgray", bg="#1c1c1c")
+        self.footer.pack(side="bottom", fill="x", pady=5)
+
+    def start_game(self):
+        difficulty = self.difficulty.get()
+        if "Easy" in difficulty:
+            self.max_range = 50
+        elif "Medium" in difficulty:
+            self.max_range = 100
+        else:
+            self.max_range = 500
+
+        self.secret_number = random.randint(1, self.max_range)
+        self.count = 0
+        self.entry.config(state="normal")
+        self.guess_button.config(state="normal")
+        self.reset_button.config(state="normal")
+        self.feedback_label.config(
+            text=f"✨ Game started! Guess between 1 and {self.max_range}", fg="lightblue")
+        self.tries_label.config(text="Tries: 0")
+        self.progress["value"] = 0
+
+    def check_guess(self):
+        try:
+            guess = int(self.entry.get())
+            self.count += 1
+
+            if guess < 1 or guess > self.max_range:
+                self.feedback_label.config(
+                    text=f"⚠️ Enter a number between 1 and {self.max_range}", fg="orange")
+                return
+
+            if guess > self.secret_number:
+                self.feedback_label.config(text="🔽 Too high! Try lower.", fg="red")
+            elif guess < self.secret_number:
+                self.feedback_label.config(text="🔼 Too low! Try higher.", fg="cyan")
+            else:
+                self.feedback_label.config(
+                    text=f"🎉 Correct! The number was {self.secret_number}", fg="lime")
+                self.guess_button.config(state="disabled")
+
+                # Animate progress bar full
+                for i in range(101):
+                    self.root.after(i * 5, lambda v=i: self.progress.config(value=v))
+
+                # Update high score
+                if self.high_score is None or self.count < self.high_score:
+                    self.high_score = self.count
+                    self.high_score_label.config(
+                        text=f"🏆 Best Score: {self.high_score} tries")
+                    messagebox.showinfo("🎉 New High Score!",
+                                        f"You set a new best score in {self.count} tries!")
+
+            # Update stats
+            self.tries_label.config(text=f"Tries: {self.count}")
+
+            # Progress bar closeness
+            closeness = max(
+                0, 100 - (abs(self.secret_number - guess) * 100 / self.max_range))
+            self.progress["value"] = closeness
+
+            self.entry.delete(0, tk.END)
+
+        except ValueError:
+            self.feedback_label.config(text="❌ Please enter a valid number!", fg="orange")
+
+    def reset_game(self):
+        self.secret_number = random.randint(1, self.max_range)
+        self.count = 0
+        self.entry.config(state="normal")
+        self.guess_button.config(state="normal")
+        self.feedback_label.config(
+            text=f"🔄 New game started! Range 1-{self.max_range}", fg="lightyellow")
+        self.tries_label.config(text="Tries: 0")
+        self.progress["value"] = 0
+        self.entry.delete(0, tk.END)
+
+
+if __name__ == "__main__":
+    root = tb.Window(themename="superhero")
+    game = GuessGame(root)
+    root.mainloop()
